@@ -1,0 +1,35 @@
+pipeline {
+    agent {
+        docker {
+            image 'rappdw/docker-java-python'
+        }
+    }
+    stages {
+        stage('Git') {
+            steps {
+                checkout scmGit(branches: [[name: env.branch]], 
+                        extensions: [[$class: 'WipeWorkspace']], 
+                        userRemoteConfigs: [[url: 'https://github.com/HelenVirtanen/skypro_workshop_at.git']])
+            }
+        }
+        stage('Install') {
+            steps {
+                sh 'pip install -r requirements.txt'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'python -m pytest test'
+            }
+            post {
+                always {
+                    script {
+                        def data = "branch=" + env.branch
+                        writeFile(file: 'allure-files/environment.properties', text: data)
+                    }
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-files']]
+                }
+            }
+        }
+    }
+}
